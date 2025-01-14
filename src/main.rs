@@ -58,20 +58,27 @@ async fn main() {
     warp::serve(routes).run(([127, 0, 0, 1], 8000)).await;
 }
 
-
-fn with_users(users: Users) -> impl Filter<Extract = (Users,), Error = Infallible> + Clone{
+fn with_users(users: Users) -> impl Filter<Extract = (Users,), Error = Infallible> + Clone {
     warp::any().map(move || users.clone())
+}
+
+pub async fn admin_handler(uid: String) -> WebResult<impl Reply> {
+    Ok(format!("Hello Admin {}", uid));
+}
+
+pub async fn user_handler(uid: String) -> WebResult<impl Reply> {
+    Ok(format!("Hello User {}", uid));
 }
 
 pub async fn login_handler(users: Users, body: LoginRequest) -> WebResult<impl Reply> {
     match users
-    .iter()
-    .find(|(_uid, user)| user.email=body.email && user.pw == body.pw)
+        .iter()
+        .find(|(_uid, user)| user.email = body.email && user.pw == body.pw)
     {
         Some((uid, user)) => {
             let token = auth::create_jwt(&uid, &Role::from_str(user.role))
-            .map_err(|e| reject::custom(e))?;
-        Ok(reply::json(&LoginResponse { token }))
+                .map_err(|e| reject::custom(e))?;
+            Ok(reply::json(&LoginResponse { token }))
         }
 
         None => Err(reject::custom(WrongCredentialserror)),

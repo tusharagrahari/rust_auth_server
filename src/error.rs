@@ -1,4 +1,1 @@
-
-fn error(){
-    
-}
+fn error() {}
