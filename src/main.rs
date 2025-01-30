@@ -9,8 +9,8 @@ use warp::{reject, reply, Filter, Rejection, Reply};
 mod auth;
 mod error;
 
-type WebResult<T> = std::result::Result<T, Rejection>;
 type Result<T> = std::result::Result<T, error::Error>;
+type WebResult<T> = std::result::Result<T, Rejection>;
 type Users = Arc<HashMap<String, User>>;
 
 #[derive(Clone)]
@@ -36,17 +36,16 @@ pub struct LoginResponse {
 async fn main() {
     let users = Arc::new(init_users());
 
-    let login_route = warp::path("login")
+    let login_route = warp::path!("login")
         .and(warp::post())
         .and(with_users(users.clone()))
         .and(warp::body::json())
         .and_then(login_handler);
 
-    let user_route = warp::path("user")
+    let user_route = warp::path!("user")
         .and(with_auth(Role::User))
         .and_then(user_handler);
-
-    let admin_route = warp::path("admin")
+    let admin_route = warp::path!("admin")
         .and(with_auth(Role::Admin))
         .and_then(admin_handler);
 
@@ -62,27 +61,26 @@ fn with_users(users: Users) -> impl Filter<Extract = (Users,), Error = Infallibl
     warp::any().map(move || users.clone())
 }
 
-pub async fn admin_handler(uid: String) -> WebResult<impl Reply> {
-    Ok(format!("Hello Admin {}", uid));
-}
-
-pub async fn user_handler(uid: String) -> WebResult<impl Reply> {
-    Ok(format!("Hello User {}", uid));
-}
-
 pub async fn login_handler(users: Users, body: LoginRequest) -> WebResult<impl Reply> {
     match users
         .iter()
-        .find(|(_uid, user)| user.email = body.email && user.pw == body.pw)
+        .find(|(_uid, user)| user.email == body.email && user.pw == body.pw)
     {
         Some((uid, user)) => {
-            let token = auth::create_jwt(&uid, &Role::from_str(user.role))
+            let token = auth::create_jwt(&uid, &Role::from_str(&user.role))
                 .map_err(|e| reject::custom(e))?;
             Ok(reply::json(&LoginResponse { token }))
         }
-
-        None => Err(reject::custom(WrongCredentialserror)),
+        None => Err(reject::custom(WrongCredentialsError)),
     }
+}
+
+pub async fn user_handler(uid: String) -> WebResult<impl Reply> {
+    Ok(format!("Hello User {}", uid))
+}
+
+pub async fn admin_handler(uid: String) -> WebResult<impl Reply> {
+    Ok(format!("Hello Admin {}", uid))
 }
 
 fn init_users() -> HashMap<String, User> {
@@ -91,19 +89,19 @@ fn init_users() -> HashMap<String, User> {
         String::from("1"),
         User {
             uid: String::from("1"),
-            email: String::from("user1@userland.com"),
+            email: String::from("user@userland.com"),
             pw: String::from("1234"),
             role: String::from("User"),
         },
     );
-
     map.insert(
         String::from("2"),
         User {
             uid: String::from("2"),
-            email: String::from("admin1@adminland.com"),
+            email: String::from("admin@adminaty.com"),
             pw: String::from("4321"),
             role: String::from("Admin"),
         },
     );
+    map
 }
